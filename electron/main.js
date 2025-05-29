@@ -45,6 +45,7 @@ ipcMain.on('start-bot', (event, data) => {
   }
   
   const botScript = path.join(__dirname, '..\\source_bot\\main.mjs');
+//    const botScript = path.join(__dirname, 'bot.js');
   
   // Configure child process with silent: true to capture stdout/stderr
   currentBot = fork(botScript, [data.bin, data.mes, data.ano, data.cvv], {

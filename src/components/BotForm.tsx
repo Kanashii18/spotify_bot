@@ -32,6 +32,7 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showContent, setShowContent] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (savedData) {
@@ -51,31 +52,8 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
         .substring(0, 16);           
     } else if (id === 'mes') {
       validatedValue = value.replace(/[^\d]/g, '').substring(0, 2);
-      
-      const month = parseInt(validatedValue);
-      if (validatedValue.length === 2 && (month < 1 || month > 12)) {
-        setErrors(prev => ({ ...prev, mes: 'Month must be between 01-12' }));
-      } else {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.mes;
-          return newErrors;
-        });
-      }
     } else if (id === 'ano') {
       validatedValue = value.replace(/[^\d]/g, '').substring(0, 4);
-      
-      const year = parseInt(validatedValue);
-      const currentYear = new Date().getFullYear();
-      if (validatedValue.length === 4 && year < currentYear) {
-        setErrors(prev => ({ ...prev, ano: 'Year must be current or future' }));
-      } else {
-        setErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.ano;
-          return newErrors;
-        });
-      }
     } else if (id === 'cvv') {
       validatedValue = value.replace(/[^\d]/g, '').substring(0, 4);
     }
@@ -84,20 +62,86 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
       ...prev,
       [id]: validatedValue
     }));
+
+    setTouched(prev => ({
+      ...prev,
+      [id]: true
+    }));
+
+    validateField(id, validatedValue);
+  };
+
+  const validateField = (field: string, value: string) => {
+    const newErrors = { ...errors };
+    
+    switch (field) {
+      case 'bin':
+        if (touched.bin && value.length > 0 && value.length < 16) {
+          newErrors.bin = 'BIN must be 16 digits';
+        } else {
+          delete newErrors.bin;
+        }
+        break;
+      case 'mes':
+        if (touched.mes && value.length === 2) {
+          const month = parseInt(value);
+          if (month < 1 || month > 12) {
+            newErrors.mes = 'Month must be between 01-12';
+          } else {
+            delete newErrors.mes;
+          }
+        } else {
+          delete newErrors.mes;
+        }
+        break;
+      case 'ano':
+        if (touched.ano && value.length === 4) {
+          const year = parseInt(value);
+          const currentYear = new Date().getFullYear();
+          if (year < currentYear) {
+            newErrors.ano = 'Year must be current or future';
+          } else {
+            delete newErrors.ano;
+          }
+        } else {
+          delete newErrors.ano;
+        }
+        break;
+      case 'cvv':
+        if (touched.cvv && value.length > 0 && value.length < 3) {
+          newErrors.cvv = 'CVV must be at least 3 digits';
+        } else {
+          delete newErrors.cvv;
+        }
+        break;
+    }
+
+    setErrors(newErrors);
   };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
-    if (formData.mes.length !== 2) {
-      newErrors.mes = 'Month must be 2 digits (MM)';
+    if (!formData.bin || formData.bin.length < 16) {
+      newErrors.bin = 'BIN must be 16 digits';
     }
     
-    if (formData.ano.length !== 4) {
-      newErrors.ano = 'Year must be 4 digits (YYYY)';
+    if (formData.mes) {
+      const month = parseInt(formData.mes);
+      if (formData.mes.length !== 2 || month < 1 || month > 12) {
+        newErrors.mes = 'Month must be between 01-12';
+      }
     }
     
-    if (formData.cvv.length < 3) {
+    if (formData.ano) {
+      const year = parseInt(formData.ano);
+      const currentYear = new Date().getFullYear();
+      if (formData.ano.length !== 4 || year < currentYear) {
+        newErrors.ano = 'Year must be current or future';
+      }
+    }
+    
+    if (formData.cvv && formData.cvv.length < 3) {
       newErrors.cvv = 'CVV must be at least 3 digits';
     }
     
@@ -107,6 +151,14 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Mark all fields as touched
+    setTouched({
+      bin: true,
+      mes: true,
+      ano: true,
+      cvv: true
+    });
     
     if (validateForm()) {
       onSubmit(formData);
@@ -137,7 +189,7 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
       </div>
       
       <form id="bot-form" onSubmit={handleSubmit}>
-        <div className={`field ${errors.bin ? 'error' : ''}`}>
+        <div className={`field ${errors.bin && touched.bin ? 'error' : ''}`}>
           <label htmlFor="bin">
             BIN
             <button
@@ -147,7 +199,7 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
             >
               {showContent ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
-            {errors.bin && <span className="error-message">{errors.bin}</span>}
+            {errors.bin && touched.bin && <span className="error-message">{errors.bin}</span>}
           </label>
           <input 
             id="bin" 
@@ -158,10 +210,10 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
           />
         </div>
         
-        <div className={`field ${errors.mes ? 'error' : ''}`}>
+        <div className={`field ${errors.mes && touched.mes ? 'error' : ''}`}>
           <label htmlFor="mes">
             MES (MM)
-            {errors.mes && <span className="error-message">{errors.mes}</span>}
+            {errors.mes && touched.mes && <span className="error-message">{errors.mes}</span>}
           </label>
           <input 
             id="mes" 
@@ -172,10 +224,10 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
           />
         </div>
         
-        <div className={`field ${errors.ano ? 'error' : ''}`}>
+        <div className={`field ${errors.ano && touched.ano ? 'error' : ''}`}>
           <label htmlFor="ano">
             AÑO (YYYY)
-            {errors.ano && <span className="error-message">{errors.ano}</span>}
+            {errors.ano && touched.ano && <span className="error-message">{errors.ano}</span>}
           </label>
           <input 
             id="ano" 
@@ -186,10 +238,10 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
           />
         </div>
         
-        <div className={`field ${errors.cvv ? 'error' : ''}`}>
+        <div className={`field ${errors.cvv && touched.cvv ? 'error' : ''}`}>
           <label htmlFor="cvv">
             CVV
-            {errors.cvv && <span className="error-message">{errors.cvv}</span>}
+            {errors.cvv && touched.cvv && <span className="error-message">{errors.cvv}</span>}
           </label>
           <input 
             id="cvv" 
@@ -204,7 +256,7 @@ export const BotForm: React.FC<BotFormProps> = ({ onSubmit, onStop, savedData, i
           <Button 
             type="submit" 
             loading={isProcessing}
-            disabled={isProcessing || Object.keys(errors).length > 0}
+            disabled={isProcessing}
           >
             {isProcessing ? 'PROCESANDO...' : 'Iniciar Bot'}
           </Button>

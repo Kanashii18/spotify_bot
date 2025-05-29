@@ -45,23 +45,31 @@ function App() {
           seenMessages.add(msg);
           setConsoleOutput(prev => [...prev, msg]);
           
+          // Parse Premium account messages
           if (msg.toLowerCase().includes('premium')) {
-          const parts = msg.split(':');
-          const email    = parts[1].trim();
-          const password = parts[2].trim();
-
-          setPremiumAccounts(prev => [
-          ...prev,
-          {
-               email,
-               password,
-               timestamp: new Date().toLocaleString()
-          }
-          ]);
-          }
-          
-          if (msg.toLowerCase().includes('premium')) {
-            setStats(prev => ({ ...prev, premium: prev.premium + 1 }));
+            try {
+              // Extract date and account info
+              const timestamp = new Date();
+              const parts = msg.split(' ');
+              const accountParts = parts[parts.length - 1].split(':');
+              
+              if (accountParts.length === 2) {
+                const [email, password] = accountParts;
+                
+                setPremiumAccounts(prev => [
+                  ...prev,
+                  {
+                    email,
+                    password,
+                    timestamp: timestamp.toISOString()
+                  }
+                ]);
+                
+                setStats(prev => ({ ...prev, premium: prev.premium + 1 }));
+              }
+            } catch (error) {
+              console.error('Error parsing Premium account:', error);
+            }
           } else if (msg.toLowerCase().includes('declined')) {
             setStats(prev => ({ ...prev, declined: prev.declined + 1 }));
           } else if (msg.toLowerCase().includes('counter')) {
@@ -179,4 +187,4 @@ function App() {
   return appContent;
 }
 
-export default App
+export default App;
